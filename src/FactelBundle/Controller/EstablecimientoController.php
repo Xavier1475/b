@@ -63,10 +63,12 @@ class EstablecimientoController extends Controller {
             $em = $this->getDoctrine()->getManager();
 
             $fullDirArchivo = $entity->getEmisor()->getDirDocAutorizados();
+	
             $newLogo = $form['logo']->getData();
-            $newLogo->move($fullDirArchivo, $newLogo->getClientOriginalName());
+        if($newLogo != null){
+	    $newLogo->move($fullDirArchivo, $newLogo->getClientOriginalName());
             $entity->setDirLogo($fullDirArchivo . "/" . $newLogo->getClientOriginalName());
-
+	}
             $em->persist($entity);
             $em->flush();
 

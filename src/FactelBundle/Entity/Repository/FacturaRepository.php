@@ -30,7 +30,7 @@ class FacturaRepository extends EntityRepository {
         return $qb->getQuery()->getOneOrNullResult();
     }
 
-    public function cantidadFacturas($idPtoEmision, $idEmisor) {
+    public function cantidadFacturas($idPtoEmision, $idEmisor, $soloAutorizadas = false) {
         $em = $this->getEntityManager();
         $qb = $em->createQueryBuilder();
         $qb->select("COUNT(factura.id)")
@@ -44,7 +44,10 @@ class FacturaRepository extends EntityRepository {
             $qb->where('emisor.id = :idEmisor');
             $qb->setParameter("idEmisor", $idEmisor);
         }
-
+        if ($soloAutorizadas) {
+            $qb->andWhere('factura.estado = :estadoFactura');
+            $qb->setParameter("estadoFactura", "AUTORIZADO");
+        }
         try {
             return $qb->getQuery()->getSingleScalarResult();
         } catch (\Doctrine\ORM\NoResultException $e) {
@@ -66,11 +69,11 @@ class FacturaRepository extends EntityRepository {
             $qb->where('emisor.id = :idEmisor');
             $qb->setParameter("idEmisor", $idEmisor);
         }
-        
+
         $qb->groupBy("factura.estado");
         return $qb->getQuery()->getResult();
     }
-    
+
     public function ventaTotal($idPtoEmision, $idEmisor, $anno) {
         $em = $this->getEntityManager();
         $qb = $em->createQueryBuilder();
@@ -91,7 +94,7 @@ class FacturaRepository extends EntityRepository {
         $qb->orderBy("mes");
         return $qb->getQuery()->getResult();
     }
-    
+
     public function ventaTotalXDia($idPtoEmision, $idEmisor) {
         $em = $this->getEntityManager();
         $qb = $em->createQueryBuilder();
@@ -114,8 +117,8 @@ class FacturaRepository extends EntityRepository {
         $qb->orderBy("dia");
         return $qb->getQuery()->getResult();
     }
-    
-    public function findFacturas($search, $start, $limit, $idPtoEmision, $idEmisor) {
+
+    public function findFacturas($search, $start, $limit, $idPtoEmision, $idEmisor, $soloAutorizadas = false) {
         $datos = explode("&", $search);
         $fechaInicial = "";
         $fechaFinal = "";
@@ -167,6 +170,10 @@ class FacturaRepository extends EntityRepository {
             $qb->andWhere("factura.fechaEmision BETWEEN :fechaInicial AND :fechaFinal")
                     ->setParameter('fechaInicial', $fechaInicial)
                     ->setParameter('fechaFinal', $fechaFinal);
+        }
+        if ($soloAutorizadas) {
+            $qb->andWhere('factura.estado = :estadoFactura');
+            $qb->setParameter("estadoFactura", "AUTORIZADO");
         }
         $qb->orderBy("factura.secuencial", "DESC");
         return $qb->getQuery()->getResult();
