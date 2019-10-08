@@ -49,6 +49,7 @@ class EstablecimientoController extends Controller {
     /**
      * Creates a new Establecimiento entity.
      *
+     * 
      * @Route("/", name="establecimiento_create")
      * @Secure(roles="ROLE_ADMIN, ROLE_EMISOR_ADMIN")
      * @Method("POST")

@@ -7,14 +7,24 @@ use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Template;
+
+
 use FactelBundle\Entity\Factura;
+use FactelBundle\Entity\Cliente;
+use FactelBundle\Entity\Emisor;
+use FactelBundle\Entity\Establecimiento;
+use FactelBundle\Entity\PtoEmision;
 use FactelBundle\Entity\FacturaHasProducto;
 use FactelBundle\Entity\Impuesto;
 use FactelBundle\Entity\CampoAdicional;
 use FactelBundle\Form\FacturaType;
+use FactelBundle\Form\ClienteType;
 use JMS\SecurityExtraBundle\Annotation\Secure;
 use Symfony\Component\HttpFoundation\Response;
 use FactelBundle\Util;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\OptionsResolver\OptionsResolverInterface;
+
 
 require_once 'ProcesarComprobanteElectronico.php';
 require_once 'reader.php';
@@ -37,15 +47,16 @@ class FacturaController extends Controller {
 
         return array();
     }
-
     /**
      * Lists all Factura entities.
      *
-     * @Route("/facturas", name="all_factura")
+     * @Route("/pagocli", name="pago")
      * @Secure(roles="ROLE_EMISOR")
      * @Method("GET")
      */
-    public function facturasAction() {
+    public function indexPago() {
+       /* $iDisplayStart="";
+        $iDisplayLength="";
         if (isset($_GET['sEcho'])) {
             $sEcho = $_GET['sEcho'];
         }
@@ -91,8 +102,294 @@ class FacturaController extends Controller {
         );
 
         $post_data = json_encode($arr);
+        */
+
+        //return new Response($post_data, 200, array('Content-Type' => 'application/json'));
+        $em = $this->getDoctrine()->getEntityManager();
+        $usu= new Factura();
+       /* $cli= new Cliente();
+        $emi= new Emisor();
+        $estab= new Establecimiento();
+        $em= $this->getDoctrine()->getManager();
+        $pto= $em->getRepository('FactelBundle:PtoEmision')->findIdPtoEmisionByUsuario($this->get("security.context")->gettoken()->getuser()->getId());
+        $usu->setCliente($cli->setId(9));
+        $usu->setEmisor($emi->setRuc('0301568283001'));
+        $usu->setEstablecimiento($estab->setNombre('matriz'));
+        $usu->setPtoEmision($pto->setNombre('CAJA'));*/
+        $em = $this->getDoctrine()->getEntityManager();
+        
+        $form= $this->createFormBuilder($usu)
+                    //->setAction($this->generateUrl('save_animal'))
+                    ->add('cliente', 'choice',[
+                        'label'=>'Cliente',
+                        'choices' => array(
+                            '9'=>'DANNY CEDEÑO'
+                    )
+                        ])
+                    /*
+                    ->add('nombre','entity',array(
+                        'class'=> Cliente::class,
+                        'placeholder'=>'',
+                        'choices'=>$cliente
+                    ))*/
+
+                    ->add('formaPago', 'choice', array(
+                        'label'=>'Formas de Pago',
+                        'choices' => array(
+                            '1'=>'Efectivo',
+                            '2'=>'Deposito',
+                            '3'=>'Cheque',
+                            '4'=>'Transferencia',
+                            '5'=>'Tarjeta de Credito',
+                            '6'=>'Otro'
+                    )))
+                    ->add('secuencial', 'text', array(
+                        'label' => 'Nro tarjeta',
+                        'required' => true,
+                        
+                    )
+                        
+                    )
+                    ->add('nroCuenta','text',array(
+                        'label'=>'Nro Cuenta',
+                        
+                    ))
+                    ->add('banco','text',array(
+                        'label'=>'Banco',
+                        'required' => true,
+                    ))   
+
+                  
+                    ->add('ctaContable','text',array(
+                        'label'=>'Cuenta Contable',
+                        'required' => true,
+                    ))
+                    ->add('monto', 'text', array(
+                        'label'=>'Valor',
+                        'required' => true,
+                        'post_max_size_message'=>'6'
+                        
+                        )
+                         
+                    )
+                    ->add('totalDescuento', 'text', array(
+                        'label'=>'Descuento',
+                        
+                    ))
+                    ->add('Enviar','submit')
+                    ->getForm();
+  
+        
+        
+                    
+                    
+                    $deleteForms = array();
+                    /*$personas = $this->getDoctrine()
+                    ->getRepository(Factura::class)
+                    ->findAll();*/
+                    $personas = $this->getDoctrine()
+                    ->getRepository(Factura::class)
+                    ->findCuentas();
+
+                        
+                        
+
+                    
+                        
+                    /*$fact = $this->getDoctrine()
+                    ->getRepository(Factura::class)
+                    ->findCuentas();
+                    $sum=0;
+                    foreach ($fact as $a) {
+                        //$deleteForms[$entity->getId()] = $this->createDeleteForm($entity->getId())->createView();
+                        $sum=0;
+                        foreach($a->abono as $r){
+                            $sum += $r->number;
+                        }
+                        $a->sum = $sum;
+                    }*/
+
+                return $this->render(
+                        'FactelBundle:PagoCliente:index.html.twig',array(
+                            'form' => $form->createView(),
+                            'entities' => $personas,
+                            'deleteForms' => $deleteForms,
+                            
+                        ));
+    }
+    /*
+     * Lists all Factura entities.
+     *
+     * @Route("/pagocli/{sal}/sald", name="saldo")
+     * @Secure(roles="ROLE_EMISOR")
+     * @Method("GET")
+     */
+    public function saldoact($sal){
+        $valor=$this->getDoctrine()
+                    ->getRepository(Factura::class)
+                    ->findSaldo($sal);
+
+         return $this->render('FactelBundle:PagoCliente:index.html.twig',array(
+             'valor'=>$valor
+         ));           
+    }
+    /**
+     * @Route("/pagocli/{id}/edit", name="form_edit")
+     * @Secure(roles="ROLE_ADMIN, ROLE_EMISOR_ADMIN")
+     * @Method("GET")
+     * @Template()
+     */
+    public function editForm($id)
+        
+    {
+       
+        /*$valor=$this->getDoctrine()
+                    ->getRepository(Factura::class)
+                    ->findSaldo($id);
+
+         return $this->render('FactelBundle:PagoCliente:edit.html.twig',array( 
+             'valor'=>$valor
+         ));
+        /*
+        $em = $this->getDoctrine()
+        ->getRepository(Factura::class)->find($id);
+        
+
+        //$entity = $em->getRepository(Factura::class)->find($id);
+        
+
+        $editForm = $this->createEditForm($em);
+        $deleteForm = $this->createDeleteForm($em);
+
+        return array(
+            'entity' => $entity,
+            'edit_form' => $editForm->createView(),
+            'delete_form' => $deleteForm->createView(),
+        );
+        $form = $this->createForm(FacturaType::class, $entity, array(
+            'action' => $this->generateUrl('factura_edit', array('id' => $entity->getId())),
+            'method' => 'PUT',
+        ));
+
+        $form->add('submit', 'submit', array('label' => 'Update'));
+
+        return $form;*/
+        $n="<script>alert('hola')</script>";
+        return new Response($n);
+        
+        
+        
+    }
+              
+    
+    /**
+     * Lists all Factura entities.
+     *
+     * @Route("/pagocli/{id}/deleteform", name="flormu")
+     * @Secure(roles="ROLE_ADMIN, ROLE_EMISOR_ADMIN")
+     * @Method("GET")
+     * @Template()
+     */
+    
+    public function formularioPagos(Factura $id){
+       /*$em = $this->getDoctrine()->getManager();
+
+        $entity = $em->getRepository('FactelBundle:Establecimiento')->findCuentasId($id);
+
+        if (!$entity) {
+            throw $this->createNotFoundException('Unable to find Establecimiento entity.');
+        }
+
+        $deleteForm = $this->createDeleteForm($id);
+
+        return $this->render(
+            'FactelBundle:PagoCliente:delete.html.twig', array(
+            'entity' => $entity
+            ,
+            'delete_form' => $deleteForm->createView(),
+        ));*/
+        $doctrine = $this->getDoctrine();
+        //Cargar entityManager
+        $em = $doctrine->getManager();
+        //CArgar el repositorio
+
+        if($id && is_object($id)){
+            $em->remove($id);
+            $em->flush();
+            $m="<script>alert('Cta Borrada exitosamente')</script>";
+
+            
+        }else{
+            $m="<script>alert('No se pudo borrar la Cta')</script>";
+
+        }
+        
+        
+        return $this->redirect($this->generateUrl('pago'));
+        
+
+        }
+ 
+    /**
+     * Lists all Factura entities.
+     *
+     * @Route("/facturas", name="all_factura")
+     * @Secure(roles="ROLE_EMISOR")
+     * @Method("GET")
+     */
+    public function facturasAction() {
+        $iDisplayStart="";
+        $iDisplayLength="";
+        if (isset($_GET['sEcho'])) {
+            $sEcho = $_GET['sEcho'];
+        }
+        if (isset($_GET['iDisplayStart'])) {
+            $iDisplayStart = intval($_GET['iDisplayStart']);
+        }
+        if (isset($_GET['iDisplayLength'])) {
+            $iDisplayLength = intval($_GET['iDisplayLength']);
+        }
+        $sSearch = "";
+        if (isset($_GET['sSearch'])) {
+            $sSearch = $_GET['sSearch'];
+        }
+
+        $em = $this->getDoctrine()->getManager();
+        $emisorId = null;
+        $idPtoEmision = null;
+        if ($this->get("security.context")->isGranted("ROLE_EMISOR_ADMIN")) {
+            $emisorId = $em->getRepository('FactelBundle:User')->findEmisorId($this->get("security.context")->gettoken()->getuser()->getId());
+        } else {
+            $idPtoEmision = $em->getRepository('FactelBundle:PtoEmision')->findIdPtoEmisionByUsuario($this->get("security.context")->gettoken()->getuser()->getId());
+        }
+        $count = $em->getRepository('FactelBundle:Factura')->cantidadFacturas($idPtoEmision, $emisorId);
+        $entities = $em->getRepository('FactelBundle:Factura')->findFacturas($sSearch, $iDisplayStart, $iDisplayLength, $idPtoEmision, $emisorId);
+        $totalDisplayRecords = $count;
+
+        if ($sSearch != "") {
+            $totalDisplayRecords = count($em->getRepository('FactelBundle:Factura')->findFacturas($sSearch, $iDisplayStart, 1000000, $idPtoEmision, $emisorId));
+        }
+        $facturaArray = array();
+        $i = 0;
+        foreach ($entities as $entity) {
+            $fechaAutorizacion = "";
+            $fechaAutorizacion = $entity->getFechaAutorizacion() != null ? $entity->getFechaAutorizacion()->format("d/m/Y H:i:s") : "";
+            $facturaArray[$i] = [$entity->getId(), $entity->getEstablecimiento()->getCodigo() . "-" . $entity->getPtoEmision()->getCodigo() . "-" . $entity->getSecuencial(), $entity->getCliente()->getNombre(), $entity->getFechaEmision()->format("d/m/Y"), $fechaAutorizacion, $entity->getValorTotal(), $entity->getEstado()];
+            $i++;
+        }
+
+        $arr = array(
+            "iTotalRecords" => (int) $count,
+            "iTotalDisplayRecords" => (int) $totalDisplayRecords,
+            'aaData' => $facturaArray
+        );
+
+        $post_data = json_encode($arr);
+        
 
         return new Response($post_data, 200, array('Content-Type' => 'application/json'));
+
+       
     }
 
     /**
@@ -1391,7 +1688,7 @@ class FacturaController extends Controller {
     /**
      * Displays a form to create a new Factura entity.
      *
-     * @Route("/nueva", name="factura_new")
+     * @Route("/nuevo", name="factura_new")
      * @Method("GET")
      * @Secure(roles="ROLE_EMISOR")
      * @Template()
@@ -1478,8 +1775,8 @@ class FacturaController extends Controller {
      * @return \Symfony\Component\Form\Form The form
      */
     private function createEditForm(Factura $entity) {
-        $form = $this->createForm(new FacturaType(), $entity, array(
-            'action' => $this->generateUrl('factura_update', array('id' => $entity->getId())),
+        $form = $this->createForm(FacturaType::class, $entity, array(
+            'action' => $this->generateUrl('factura_edit', array('id' => $entity->getId())),
             'method' => 'PUT',
         ));
 
@@ -1496,12 +1793,9 @@ class FacturaController extends Controller {
      * @Method("DELETE")
      */
     public function deleteAction(Request $request, $id) {
-        $form = $this->createDeleteForm($id);
-        $form->handleRequest($request);
-
-        if ($form->isValid()) {
+            $form = $this->createDeleteForm($id);
             $em = $this->getDoctrine()->getManager();
-            $entity = $em->getRepository('FactelBundle:Factura')->find($id);
+            $entity = $em->getRepository('FactelBundle:Factura')->findFacturaById($id);
 
             if (!$entity) {
                 throw $this->createNotFoundException('Unable to find Factura entity.');
@@ -1509,9 +1803,27 @@ class FacturaController extends Controller {
 
             $em->remove($entity);
             $em->flush();
-        }
 
         return $this->redirect($this->generateUrl('factura'));
+    }
+
+    /**
+     * Creates a form to delete a Factura entity by id.
+     *
+     * @param mixed $id The entity id
+     *
+     * @return \Symfony\Component\Form\Form The form
+     */
+    private function eliminarhas($id) {
+        $em = $this->getDoctrine()->getManager();
+        $entity = $em->getRepository('FactelBundle:Factura')->findhas($id);
+
+        if (!$entity) {
+                throw $this->createNotFoundException('Unable to find Factura entity.');
+        }
+
+        $em->remove($entity);
+        $em->flush();
     }
 
     /**
